@@ -12050,6 +12050,31 @@ div#notebook {
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>It seems a valid data point as well. We can then assume that there is no outliner in our dataset anymore and we can start the next step of the investigation.</p>
+<p>Udacity's Tutor told me that there were two more outliners needed to be cleaned: "THE TRAVEL AGENCY IN THE PARK" and
+"LOCKHART EUGENE E".</p>
+<p>The first one isn't even a person and very likely not a part of Enron, we can then considered it as incorrectly entered data, since we want to find out the person of interest in the model. We need to clean this data point, though it may be one of the parties which have trades with Enron.</p>
+<p>The second one has null values in all the features and provides no informations, so this data point isn't going to help us either in the section of training or testing, so it should be removed as well.</p>
+<p>In order to prevent the second type of outliners, I've written a function which can detect if the data point has too many missing points:</p>
+
+<pre><code>features_valid = ['salary', 'deferral_payments', 'total_payments', 'loan_advances', 'bonus', 'restricted_stock_deferred', 'deferred_income', 'total_stock_value', 'expenses', 'exercised_stock_options', 'other', 'long_term_incentive', 'restricted_stock', 'director_fees',
+'to_messages', 'from_poi_to_this_person', 'from_messages', 'from_this_person_to_poi', 'shared_receipt_with_poi']
+
+#delect email address, since if we use isnan to testify if the data point, we need float form, which we can not use on sting
+#delect poi, it will return either true or false but never nan!
+
+# check if there is a datapoint with Null datapoint
+def nan_checker(data_dict, number):
+    # use to find out all nan datapoint:
+    for name, data in data_dict.iteritems():
+        i = 0
+        for x in features_valid:
+            if math.isnan(float(data[x])):
+                i += 1
+        if i == number: # change the number if you're unsatisfied by the data point with too many nans
+            print name
+            print data
+
+nan_checker(data_dict, len(features_valid))  #find out the person who fail all of the features</code></pre>
 
 </div>
 </div>
@@ -12069,12 +12094,20 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>I end up using three features:</p>
 <ul>
+<li>from_messages</li>
+<li>total_stock_value</li>
+<li>deferred_income</li>
+</ul>
+<p>At the first time of the submission to Udacity, I used these three features as my final choices:</p>
+<ul>
 <li>bonus</li>
 <li>total_stock_value</li>
 <li>deferred_income</li>
 </ul>
 <p>The reason why I choose the first two features is because they are important factors to stimulate the Enron staffs planning scams by pretending the company to have hugh profits and healthy financial statements, so that they can gain more from the bonus and attract more people to invest the company, which at the end pushes up the price of the stock and indirectly influences the value of their stocks.</p>
 <p>The third feature is chosen since I notice that in the original report of our dataset "Enron Statement of Financial Affairs (In re: Enron Corp.) 01-16034", some of the pois like John C Baxter and Kennth D Rice have great number of deferred income. Some non-Poi like Kevin P Hannon has larger amount of deferred income, but he doesn't have the huge value of total stock value at the same time as the two pois have. Therefore, I think it may be a good feature to be included.</p>
+<p>The reason why I used from_messages instead of bonus was because the Udacity's mentor suggested that I might try some features about email, since the number of sending or receiving email should be related to whether a person is important to the company.</p>
+<p>Moreover, the result was not hugely damaged when I excluded bonus out of the feature list, therefore I think it should be replaced.</p>
 
 </div>
 </div>
@@ -12084,7 +12117,64 @@ div#notebook {
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>In the final choice of my algorithm, Gaussian Naive Bayes, I doesn't create any scaling since in the classification process the algorithm only considers the probability rather than the distance of features' values between each other. But I scale them when I use another algorithm because it gets involved with the method of K-means Clustering, which will considers the matter of distance.</p>
-<p>For the attempt of creating new feature, I create a feature of 'fraction_of_exercised_stock', which calculates the proportion of exercised stock options in the number of total stock value, as the poi might want to exercise their stock options earlier in order to exchange their stocks into cashes at the pike of the stock price, before the bad news come. It seems not a good feature when I use it in my algorithm, I think it is because poi might expect better price of the stock in the future and hold it for a while, so I doesn't include it in the final version.</p>
+<p>For the attempt of creating new feature, I create a feature of 'fraction_of_exercised_stock', which calculates the proportion of exercised stock options in the number of total stock value, as the poi might want to exercise their stock options earlier in order to exchange their stocks into cashes at the pike of the stock price, before the bad news come.</p>
+<p>It seems not a good feature. Let's say if I change the feature combination into:</p>
+<ul>
+<li>bonus</li>
+<li>fraction_of_exercised_stock </li>
+<li>deferred_income</li>
+</ul>
+<p>There's no point to use the feature of total_stock_value together, since the correlation between its fraction and the total value must be bigger than zero and will cause biased situation in our model.</p>
+<p>For example if we train our model with the GaussianNB algorithms again, which we use in the final version, the result of scores according to tester.py will be:</p>
+
+<pre><code>Accuracy: 0.87107    Precision: 0.60167    Recall: 0.28850
+F1: 0.39000</code></pre>
+<p>the Recall score move down to 0.28 and the Precision will move up to 0.60167. Since we need to keep both of the scores higher than 0.3, so I doesn't include it in the final version.</p>
+<p>It can be explaned that poi might expect better price of the stock in the future and hold it for a while, so there are some pois who kept waiting and the algorithm will judge them as non-poi, so that the Recall score move down because of the increase of False Negatives.</p>
+<p>But still, this is a very interesting feature, because it brings the greatest Precision score I have ever met in my project, which is larger than 0.5 and greater than a mere guess. Maybe the one who rushes having the stock is very likely a poi?</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Having the instruction from the mentor, I've also tried SelectKBest to find out the most related features:</p>
+
+<pre><code>features_list = ['poi', 'salary', 'deferral_payments', 'total_payments', 'loan_advances', 'bonus', 'restricted_stock_deferred', 'deferred_income', 'total_stock_value', 'expenses', 'exercised_stock_options', 'other', 'long_term_incentive', 'restricted_stock', 'director_fees',
+'to_messages', 'from_poi_to_this_person', 'from_messages', 'from_this_person_to_poi', 'shared_receipt_with_poi']
+
+my_dataset = data_dict
+data = featureFormat(my_dataset, features_list, sort_keys = True)
+label, features = targetFeatureSplit(data)
+
+features_train, features_test, labels_train, labels_test = train_test_split(features, label, test_size=0.1, random_state=42)
+
+sfm = SelectKBest(f_classif, k=3).fit(features_train,labels_train)
+
+print sfm.scores_
+
+index = sfm.get_support(indices=True)
+print index
+features_list_best = features_list[1:]
+for i in index:
+      print features_list_best[i] #print the features with best k socres</code></pre>
+<p>The result will be:</p>
+
+<pre><code>[ 20.75819764   0.07056005   8.75720115   6.76321871  33.07230983
+   0.07054169  11.23694023  15.78178978   4.72981234  15.48995797
+   3.87862368  11.85680446   9.15789004   2.10199584   2.21719475
+   9.61003011   0.12413113   3.31395783  11.31410173]
+[0 4 7]
+salary
+bonus
+total_stock_value</code></pre>
+<p>If we follow this combination in our GaussianNB Algorithm, the score will be:</p>
+
+<pre><code>Accuracy: 0.84146    Precision: 0.47589    Recall: 0.30100
+F1: 0.36876</code></pre>
+<p>Sadly, it doesn't beat the first and second combination we mentioned in this section before in all the four socres. (For detailed comparsion, readers can find the result in the appendix section)</p>
 
 </div>
 </div>
@@ -12103,11 +12193,21 @@ div#notebook {
 clf2 = RandomForestClassifier(random_state=5, max_depth=6)
 clf3 = GaussianNB()
 
-clf = VotingClassifier(estimators=[('knn', clf1), ('rf', clf2),('gnb', clf3)], 
-    voting='hard')</code></pre>
-<p>According to the result of tester.py which checks the performance of the algorithm 1000 times in order to provide trustable tests, we can get better Recall score (0.35) by only applying GaussianNB. If we use the voting algorithm, we can get improvement by 0.01 in score of accuracy and 0.013 of Precision, but lose 0.05 in Recall.</p>
-<p>Athlough the voting algorithm's scores in Precision and Recall reach the requirement of projects, it produces quite a lot of false negetives and sacrifices the performance in Recall. I think it is because the Clustering and Random Forest perform relative bad in preventing false negative. When they meet a poi data point, both of them may not discover it is poi and win the vote by forming the majority.</p>
-<p>Also there is a huge difference in the speed of computing, since each judgement needs to go through all three algorithms. The file of tester.py just needs about 2 seconds to run the GaussianNB and about 48 seconds to run the voting algorithm.</p>
+Vote_clf = VotingClassifier(estimators=[('knn', clf1), ('rf', clf2),('gnb', clf3)], 
+    voting='hard')
+
+clf = Pipeline(steps=[
+    ('scaler', MinMaxScaler()),
+    ('voting', Vote_clf),
+    ]) # put the classifier into the pipeline</code></pre>
+<p>According to the result of tester.py which checks the performance of the algorithm 1000 times in order to provide trustable tests, the scores of applying GaussianNB is:</p>
+
+<pre><code>Accuracy: 0.85971   Precision: 0.51302  Recall: 0.35450 F1: 041928</code></pre>
+<p>And the scores of applying the voting algorithm is:</p>
+
+<pre><code>Accuracy: 0.86086   Precision: 0.52338  Recall: 0.29100 F1: 037404</code></pre>
+<p>I think it is because the Clustering and Random Forest perform relative bad in preventing false negative, especially the Random Forest. When they meet a poi data point, both of them may not discover it is poi and win the vote by forming the majority.</p>
+<p>Also there is a huge difference in the speed of computing, since each judgement needs to go through all three algorithms. The file of tester.py just needs about 2 seconds to run the GaussianNB and about 55 seconds to run the voting algorithm.</p>
 <p>So I choose the first solution instead, even though it is a quite straightforward solution.</p>
 
 </div>
@@ -12134,7 +12234,20 @@ cv_clf.fit(features_train, labels_train)
 print cv_clf.best_params_</code></pre>
 <p>But for a mysterious reason, the recommanded combination of n_estimators, random_state and max_depth which doesn't outperform my default try on the parameters, random_state=5, max_depth=6 in the result of tester.py. The reason may be because the scoring system of GridSearchCV is based on the score of the current random state, whose result may not be as stable as tester.py's.</p>
 <p>The parameter of Clustering is obvious, since we want to distinguish whether an Enron member is a poi or not, it should be classified in 2 groups -- poi or non-poi, so the number of clustering should also be 2.</p>
-<p>The algorithm of GaussianNB doesn't need to be tuned but it performs better anyway, persionally speaking, which somehow frustrates me......</p>
+<p>The algorithm of GaussianNB doesn't need to be tuned, but it can be used as base estimator of the Adaboost, which can learn errors from the previous weak learners and improve the performance.</p>
+
+<pre><code>from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import AdaBoostClassifier
+clf = AdaBoostClassifier(base_estimator = GaussianNB())</code></pre>
+<p>If we use the feature combination of "bonus + total stock value + deferred income", the result of Adaboost will be:</p>
+
+<pre><code>Accuracy: 0.86086    Precision: 0.52338    Recall: 0.29100
+F1: 0.37404</code></pre>
+<p>Comparing to the normal GaussianNB:</p>
+
+<pre><code>Accuracy: 0.85971    Precision: 0.51302    Recall: 0.35450
+F1: 0.41928</code></pre>
+<p>The Precision score will be a bit better using Adaboost, whose Recall sadly misses our requirement.</p>
 
 </div>
 </div>
@@ -12144,14 +12257,61 @@ print cv_clf.best_params_</code></pre>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p><strong>5. What is validation, and what’s a classic mistake you can make if you do it wrong? How did you validate your analysis?</strong></p>
-<p>Validation is:</p>
-<ol>
-<li>Fit our training dataset into the model</li>
-<li>Substitute the features from the testing set into the trained model to predict</li>
-<li>Validate the predicted result with the true label of the testing set</li>
-</ol>
-<p>The mistake should be the tradeoff between the amount of training set and the testing set. When we choose too many data points as the training set, we then have no enough data points to test whether the model is good or not; when we choose too less data points as training data, then the model is not well trained and about to fail the test.</p>
-<p>I validate the result without tunning the weight of training/testing, since the evaluation of this project depends on tester.py, which doesn't have different result when I tune the parameter of test_size.</p>
+<p>Validation is the method to test how our model performs, since our model may make the mistake of overfitting, which means our model may be formed too complexly to fit every data point of training data. In order to prevent this problem, we use cross validation to evaluate our result.</p>
+<p>There are few ways to achieve the cross validation:</p>
+<ul>
+<li>Hold out Method</li>
+</ul>
+<p>We split 50% to 70 % of our sample into training sample and 50% to 30% into testing/holding out sample. After we train our model based on the training set, we evaluate the model with the testing set.</p>
+<p>Example using sklearn:</p>
+
+<pre><code>from sklearn.cross_validation import train_test_split
+features_train, features_test, labels_train, labels_test = \
+    train_test_split(features, labels, test_size=0.3, random_state=42)</code></pre>
+<p>It is fast to compute the result, but it may cause "Selection bias", which means that we may have different evaluation results because of different divisions and the performance of the algorithm may not be judged fairly, so that we might get very different results when we change the parameter of random_state to randomize the division.</p>
+<ul>
+<li>K-Fold CV</li>
+</ul>
+<p>We split the dataset into K size or K folds of sub-samples, then we use K - 1 sub-samples as the training set and the remaining fold as testing set. And we repeat this process K times until all of the sub-samples have once been used as testing set. At last, we will get the average result of the evaluation.</p>
+<p>During this process, we randomize the process and avoid the Error we will meet if we use Hold out Method.</p>
+<p>Here's a Example according to our Enron dataset, assuming K = 15:</p>
+
+<pre><code>kf = KFold(n_splits=15, shuffle=True)
+
+# it will print which data point we have taken and score of each fold for 15 times
+
+for train_indices, test_indices in kf.split(labels):
+    print ("TRAIN:", train_indices, "TEST:", test_indices)
+    features_train = [features[ii] for ii in train_indices]
+    features_test = [features[ii] for ii in test_indices]
+    labels_train = [labels[ii] for ii in train_indices]
+    labels_test = [labels[ii] for ii in test_indices]
+
+    clf = GaussianNB()
+    clf.fit(features_train, labels_train)
+    pred = clf.predict(features_test)
+    print "precision:", precision_score(labels_test, pred)
+    print "recall:", recall_score(labels_test, pred)
+    print "--------one round over------------"
+
+
+# if we want to get the average score instead of printing out all the results:
+
+from sklearn.model_selection import cross_val_score
+scores = cross_val_score(clf, features_train, labels_train, cv=kf, scoring='recall_macro')
+avg_score = np.mean(scores)
+print(avg_score)</code></pre>
+<ul>
+<li>Leave one out CV</li>
+</ul>
+<p>It is a variation of K-Fold CV. Assuming we have N data points, we split the dataset into N folds of sub-samples. As we have done in K-Fold CV, this time we use our N - 1 sub-samples as the training set and the remaining one as the testing set. Since we have N folds, so we need to repeat the process N times to get the average reslult.</p>
+<ul>
+<li>Bootstrap Methods</li>
+</ul>
+<p>Full name should be "Boostrap aggregating - bagging": we have N number of instances in our training set. We then take N' number of instances and form a bag of training set. And N' should be less than N.</p>
+<p>To randomize the process, after we form our dataset into the first bag, we form the second bag with replacements, as if we have done with the dataset at the first time, that means taking out datapoints to form one bag will not affect how we form the other bags and we might have the bags with similar datapoints.</p>
+<p>Then we train the model with M number of bags and get the average score of M times evaluations with the testing set.</p>
+<p>At first, I validated the result via Hold out Method without tunning the random state and once found a result with excellent scores, but then Udacity's mentor reminded me that the result was not believable because of the small size of our dataset. I just met a part of the dataset which was accidentally favorable to my model. After I use tester.py to test my model or just tune the parameter of the random state, the number of score will drop down significantly.</p>
 
 </div>
 </div>
@@ -12162,7 +12322,91 @@ print cv_clf.best_params_</code></pre>
 <div class="text_cell_render border-box-sizing rendered_html">
 <p><strong>6. Give at least 2 evaluation metrics and your average performance for each of them. Explain an interpretation of your metrics that says something human--understandable about your algorithm’s performance. </strong></p>
 <p>In this project, I always look for two merics: Precision and Recall, since they focus on whether we can identify poi in our algorithm, or produce "true positive".</p>
-<p>My algorithm get 0.51302 in Precision and 0.35450 in Recall. It can be interpreted as: the prediction can be 50/50 true, when algorithm says someone is a poi; but when it says someone isn't poi, there is more possible that the prediction has made a mistake.</p>
+<p>The reason why we don't focus on Accuracy Score is because it will mislead us to believe our model is good enough. Because of the limitation of the dataset, there are 146 non-pois and only 18 pois in our dataset. If we give up having machine learning and just blindly predict all of the datapoint to be non-pois, we can still gain (146-18)/146 = 0.87 in Accuracy Score! So this is not a fair standard to test a model.</p>
+<p>Secondly, the aim of model is to identify poi, that means a model which perfectly finds out all of the non-pois but fail to find out any pois is totally useless.</p>
+<p>Here's the performance of final version:</p>
+
+<pre><code>Accuracy: 0.86643    Precision: 0.54571    Recall: 0.38800
+F1: 0.45354</code></pre>
+<p>My algorithm get 0.54571 in Precision and 0.38800 in Recall. It can be interpreted as: the prediction can be 50/50 true, when algorithm says someone is a poi; but when it says someone isn't poi, there is more possible that the prediction has made a mistake.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="Appendix:-Selections-of-results-using-tester.py">Appendix: Selections of results using tester.py<a class="anchor-link" href="#Appendix:-Selections-of-results-using-tester.py">&#182;</a></h2><p>*I haven't compared with the differences between without or with the specific feature_range in MinMaxScaler when I use Voting or Clustering, since it's horribly time consuming.</p>
+<p>*The order of algorithm follows the number of F1-score</p>
+<h3 id="Features-Combination-1:">Features Combination 1:<a class="anchor-link" href="#Features-Combination-1:">&#182;</a></h3><ul>
+<li>from_messages</li>
+<li>total_stock_value</li>
+<li>deferred_income</li>
+</ul>
+<p>GausainNB:</p>
+
+<pre><code>Accuracy: 0.86643    Precision: 0.54571    Recall: 0.38800
+F1: 0.45354</code></pre>
+<p>Voting Classifier (Clustering + Random Forest + GaussianNB, MinMaxScaler(feature_range=(0, 1)):</p>
+
+<pre><code>Accuracy: 0.85564    Precision: 0.48855    Recall: 0.22400
+F1: 0.30716</code></pre>
+<p>Voting Classifier (Clustering + Adaboost with GaussianNB as base estimator + GaussianNB, MinMaxScaler(feature_range=(0, 1)):</p>
+
+<pre><code>Accuracy: 0.81669    Precision: 0.34213    Recall: 0.20750
+F1: 0.25833</code></pre>
+<p>Clustering, no specific feature_range in scaling:</p>
+
+<pre><code>Accuracy: 0.76436   Precision: 0.22160  Recall: 0.25850 F1: 0.23863</code></pre>
+<h3 id="Features-Combination-2:">Features Combination 2:<a class="anchor-link" href="#Features-Combination-2:">&#182;</a></h3><ul>
+<li>bonus</li>
+<li>total_stock_value</li>
+<li>deferred_income</li>
+</ul>
+<p>GausainNB:</p>
+
+<pre><code>Accuracy: 0.85971    Precision: 0.51302    Recall: 0.35450
+F1: 0.41928</code></pre>
+<p>Voting Classifier (Clustering + Random Forest + GaussianNB, MinMaxScaler(feature_range=(0, 1)):</p>
+
+<pre><code>Accuracy: 0.86086    Precision: 0.52338    Recall: 0.29100
+F1: 0.37404</code></pre>
+<p>Adaboost, GaussianNB as base estimator:</p>
+
+<pre><code>Accuracy: 0.71371    Precision: 0.21347    Recall: 0.37400
+F1: 0.27180</code></pre>
+<p>Clustering, no specific feature_range in scaling:</p>
+
+<pre><code>Accuracy: 0.72243   Precision: 0.20678  Recall: 0.33250 F1: 0.25498</code></pre>
+<h3 id="Features-Combination-3:">Features Combination 3:<a class="anchor-link" href="#Features-Combination-3:">&#182;</a></h3><ul>
+<li>bonus</li>
+<li>fraction_of_exercised_stock</li>
+<li>deferred_income</li>
+</ul>
+<p>GausainNB:</p>
+
+<pre><code>Accuracy: 0.87107    Precision: 0.60167    Recall: 0.28850
+F1: 0.39000</code></pre>
+<p>Clustering, no specific feature_range in scaling:</p>
+
+<pre><code>Accuracy: 0.51543   Precision: 0.14782  Recall: 0.50200 F1: 0.22839</code></pre>
+<h3 id="Features-Combination-4:">Features Combination 4:<a class="anchor-link" href="#Features-Combination-4:">&#182;</a></h3><ul>
+<li>salary</li>
+<li>total_stock_value</li>
+<li>other</li>
+</ul>
+<p>GausainNB:</p>
+
+<pre><code>Accuracy: 0.84146    Precision: 0.47589    Recall: 0.30100
+F1: 0.36876</code></pre>
+<p>Voting Classifier (Clustering + Random Forest + GaussianNB, MinMaxScaler(feature_range=(0, 1)):</p>
+
+<pre><code>Accuracy: 0.83815    Precision: 0.43048    Recall: 0.16100
+F1: 0.23435</code></pre>
+<p>Clustering, no specific feature_range in scaling:</p>
+
+<pre><code>Accuracy: 0.73700   Precision: 0.17753  Recall: 0.23150 F1: 0.20095</code></pre>
 
 </div>
 </div>

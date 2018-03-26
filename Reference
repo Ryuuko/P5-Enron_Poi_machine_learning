@@ -18,3 +18,21 @@ http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSea
 
 sklearn.metrics.classification_report — scikit-learn 0.19.1 documentation
 http://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html#sklearn.metrics.classification_report
+
+如何让SelectKBest的得分与特征名称对应显示出来？
+http://discussions.youdaxue.com/t/selectkbest/52300
+
+1.11. Ensemble methods — scikit-learn 0.19.1 documentation
+http://scikit-learn.org/stable/modules/ensemble.html#adaboost
+
+Four Types Of Cross Validation| K-Fold | Leave One Out |Bootstrap | Hold Out - YouTube
+https://www.youtube.com/watch?v=e0JcXMzhtdY
+
+How to properly use SelectKBest, GridSearchCV, and cross-validation in the sklearn package together - Quora
+https://www.quora.com/How-do-I-properly-use-SelectKBest-GridSearchCV-and-cross-validation-in-the-sklearn-package-together
+
+python - How to get the scores of each feature from sklearn.feature_selection.SelectKBest? - Stack Overflow
+https://stackoverflow.com/questions/32701649/how-to-get-the-scores-of-each-feature-from-sklearn-feature-selection-selectkbest
+
+Bootstrap aggregating bagging - YouTube
+https://www.youtube.com/watch?v=2Mg8QD0F1dQ
